@@ -1,0 +1,25 @@
+X-Originating-IP: 127.0.0.1
+X-Forwarded-For: 127.0.0.1
+X-Forwarded: 127.0.0.1
+Forwarded-For: 127.0.0.1
+X-Remote-IP: 127.0.0.1
+X-Remote-Addr: 127.0.0.1
+X-ProxyUser-Ip: 127.0.0.1
+Client-IP: 127.0.0.1
+X-Client-IP: 127.0.0.1
+True-Client-IP: 127.0.0.1
+Cluster-Client-IP: 127.0.0.1
+X-Forwarded-Host: 127.0.0.1
+X-Host: 127.0.0.1
+Host: localhost
+Host: 127.0.0.1
+X-Forwarded-Proto: https
+X-Forwarded-Ssl: on
+X-Original-URL: {PATH}
+X-Rewrite-URL: {PATH}
+X-Forwarded-Prefix: /geoserver
+X-Forwarded-Path: {PATH}
+X-HTTP-Method-Override: GET
+X-HTTP-Method: GET
+X-Method-Override: GET
+Connection: close, X-Forwarded-For
