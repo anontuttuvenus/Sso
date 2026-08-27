@@ -1,0 +1,5 @@
+That changes the description significantly because you demonstrated actual exploitation, not just theoretical enumeration. I would write it like this:
+
+Description
+
+The application returns distinct error messages for different validation failures involving collector numbers, card numbers, PIN/SPIN values, and offer codes, allowing valid values to be progressively enumerated. During testing, only five valid card and PIN/SPIN combinations were initially provided; however, by analyzing these responses, over 100 additional valid card numbers were successfully enumerated. A discovered card number was then selected and its corresponding valid PIN/SPIN was successfully identified. The identified card and PIN/SPIN combination could subsequently be used to deposit the associated points into a collector account. The issue is further exacerbated by insufficient rate limiting and the absence of card-level lockout controls, allowing repeated enumeration and guessing attempts.
