@@ -1,0 +1,70 @@
+Context confirmed with application team: The /verify (card resend) endpoint sits behind the API Gateway, requires a valid Bearer token (issued via client ID/secret, ~30-min TTL), and is protected in production by F5 with default rate limiting applied to this endpoint.
+
+====================================================
+FINDING 1: Card Number Enumeration via Discrepant Error Messages
+====================================================
+
+DESCRIPTION:
+The card verify API endpoint returns a distinct, identifiable error message when a submitted card number does not exist in the database, compared to the response returned for a valid card number. This behavioral difference allows an authenticated API consumer to distinguish valid from invalid card numbers without needing to complete the full verification flow. Because the endpoint accepts arbitrary card number input and responds differently based on validity, an attacker holding a valid client ID and secret can systematically enumerate valid card numbers through automated requests. During testing, this enumeration was demonstrated successfully once the WAF was bypassed via a testing-specific allowlist rule. In production, this same behavior is present, but access requires a valid OAuth bearer token and traffic is subject to F5-enforced rate limiting by default.
+
+ATTACK AND RISK SCENARIO:
+An attacker who has obtained legitimate API client credentials (through a compromised partner integration, insider access, or a leaked credential) could submit sequential or randomized card numbers to the verify endpoint and rely on the differing error responses to build a list of valid, active card numbers. This valid-card list could then be used as input for further abuse, including the resend/email-bombing behavior in Finding 2. Real-world exploitability is constrained by the requirement for valid API credentials and by F5 rate limiting, which throttles high-volume enumeration attempts and increases the likelihood of detection.
+
+RECOMMENDATION:
+- Return a generic, identical response (message, status code, timing) for both valid and invalid card number submissions.
+- Apply anomaly-based alerting on this endpoint's error-response ratio, not just raw request volume, since low-and-slow enumeration can evade blunt rate limits.
+- Log and periodically review API client usage patterns for abnormal sequential/bulk querying tied to a single credential.
+
+RISK RATING (OWASP Risk Rating Methodology):
+Threat Agent: Skill 3, Motive 4, Opportunity 3, Size 2 → avg 3.0
+Vulnerability: Ease of Discovery 3, Ease of Exploit 2, Awareness 4, Intrusion Detection 2 → avg 2.75
+Overall Likelihood: ~2.9 → LOW
+
+Technical Impact: Confidentiality 6, Integrity 0, Availability 0, Accountability 2 → avg 2.0
+Business Impact: Financial 3, Reputation 4, Compliance 5, Privacy 6 → avg 4.5
+Overall Impact: ~3.25 → MEDIUM
+
+Overall OWASP Risk Rating: LOW (some programs round to Medium given PCI/privacy sensitivity — confirm your team's convention)
+
+CVSS 4.0 VECTOR:
+CVSS:4.0/AV:N/AC:H/AT:N/PR:L/UI:N/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N/E:A
+MacroVector: 112201 (bucket ceiling 2.3 — confirm exact score at first.org/cvss/calculator/4.0)
+
+REFERENCE:
+OWASP WSTG-IDNT-04 — Testing for Account Enumeration and Guessable User Account
+https://owasp.org/www-project-web-security-testing-guide/stable/4-Web_Application_Security_Testing/03-Identity_Management_Testing/04-Testing_for_Account_Enumeration_and_Guessable_User_Account.html
+
+
+====================================================
+FINDING 2: Lack of Effective Application-Layer Rate Limiting Enabling Repeated Email Generation
+====================================================
+
+DESCRIPTION:
+Once a valid card number is identified, repeated submissions of that same card number to the verify endpoint each trigger a new outbound email to the cardholder's associated address, with no observed per-card or per-session cap on the application layer during testing. During the internal assessment, over two thousand emails were generated against a single valid card number without any service disruption, demonstrating the absence of an application-enforced limit on this action. This was only reproducible because testing traffic was exempted from WAF inspection via an internal allowlist rule; production traffic is subject to F5 protection with default rate limiting, and access still requires a valid, time-bound bearer token obtained via client credentials. The endpoint combines a resource-consumption weakness at the application layer with compensating network-layer controls not present in the tester's vantage point during this specific test.
+
+ATTACK AND RISK SCENARIO:
+An attacker with valid API credentials and a known-valid card number (potentially obtained via Finding 1) could repeatedly invoke the verify endpoint to flood the associated cardholder's inbox, causing a nuisance/harassment condition and potentially masking legitimate transaction notification emails. Under real-world conditions, F5's default rate limiting on this endpoint is expected to cap the achievable request volume well below what was observed during the uninspected internal test, reducing both the scale of email flooding and the likelihood of the attack going undetected.
+
+RECOMMENDATION:
+- Implement an explicit application-layer cap (per-card and per-client-credential cooldown) on resend/verify actions, independent of network-layer (F5) rate limiting.
+- Alert on repeated verify requests targeting the same card number from a single API client within a short window.
+- Periodically validate that F5 rate-limiting rules for this endpoint remain active and correctly scoped.
+
+RISK RATING (OWASP Risk Rating Methodology):
+Threat Agent: Skill 3, Motive 3, Opportunity 3, Size 2 → avg 2.75
+Vulnerability: Ease of Discovery 3, Ease of Exploit 2, Awareness 4, Intrusion Detection 2 → avg 2.75
+Overall Likelihood: ~2.75 → LOW
+
+Technical Impact: Confidentiality 2, Integrity 0, Availability 4, Accountability 2 → avg 2.0
+Business Impact: Financial 2, Reputation 4, Compliance 2, Privacy 2 → avg 2.5
+Overall Impact: ~2.25 → LOW
+
+Overall OWASP Risk Rating: LOW
+
+CVSS 4.0 VECTOR:
+CVSS:4.0/AV:N/AC:H/AT:N/PR:L/UI:N/VC:L/VI:N/VA:L/SC:N/SI:N/SA:L/E:A
+MacroVector: 112201 (bucket ceiling 2.3 — confirm exact score at first.org/cvss/calculator/4.0)
+
+REFERENCE:
+OWASP API Security Top 10 2023 — API4:2023 Unrestricted Resource Consumption
+https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/
