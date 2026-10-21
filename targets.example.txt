@@ -1,0 +1,4 @@
+# Replace with exact URLs provided by your ASF 78 asset owner.
+# One URL per line. Wildcards, query strings, and credentials are rejected.
+https://app.example.com/
+https://api.example.com/health
